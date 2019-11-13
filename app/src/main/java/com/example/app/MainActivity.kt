@@ -2,26 +2,21 @@ package com.example.app
 
 import android.content.Intent
 import android.os.Bundle
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.actor
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlinx.coroutines.MainCoroutineDispatcher as Main
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ScopedAppActivity() {
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,22 +43,39 @@ class MainActivity : AppCompatActivity() {
         }
         return super.onOptionsItemSelected(item)
     }
+
+
+    fun setup(hello: TextView, fab: FloatingActionButton) {
+        //在主线程中使用协程更新UI
+        //updateUIWithCoroutineInMainThread(hello)
+
+        //在主线程中使用协程更新UI，取消协程
+        //updateUIWithCancelCoroutineJob(hello, fab)
+
+        //使用actor:最多一个并发任务：同一时间，只有一个协程任务在执行,确保被启动的协程的数量没有无限制的增长
+        //updateUIWithCoroutineActor(fab, hello)
+
+        //使用actor + capacity = Channel.CONFLATED: 只处理最新的事件，总共执行2次
+        updateUIWithCoroutineActor2(fab, hello)
+
+        //子线程
+        testExceptionHandler()
+
+        //主线程
+        testExceptionHandler(this, 1000)
+
+        //子线程
+        testExceptionHandler(GlobalScope, 2000)
+    }
 }
 
-val TAG: String = "coroutine"
+const val TAG: String = "coroutine"
 
-fun setup(hello: TextView, fab: FloatingActionButton) {
-    //在主线程中使用协程更新UI
-    //updateUIWithCoroutineInMainThread(hello)
-
-    //在主线程中使用协程更新UI，取消协程
-    //updateUIWithCancelCoroutineJob(hello, fab)
-
-    //使用actor:最多一个并发任务：同一时间，只有一个协程任务在执行,确保被启动的协程的数量没有无限制的增长
-    //updateUIWithCoroutineActor(fab, hello)
-
-    //使用actor + capacity = Channel.CONFLATED: 只处理最新的事件，总共执行2次
-    updateUIWithCoroutineActor2(fab, hello)
+fun testExceptionHandler(scope: CoroutineScope = GlobalScope, time: Long = 500) = scope.launchWithExceptionHandler {
+    //线程根据传递进来的 scope 决定
+    delay(time)
+    Log.e(TAG, "testExceptionHandler() scope  current threadName: [${Thread.currentThread().name}], delay time:$time")
+    throw NullPointerException("testExceptionHandler exception scope")
 }
 
 /**
